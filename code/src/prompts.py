@@ -67,14 +67,41 @@ image that reveals a contradiction. Empty when no image is sufficient \
 (typically for not_enough_information).
 
 issue_type: use "none" when the claimed part is visible and undamaged; "unknown" \
-when the issue cannot be determined.
+when the issue cannot be determined. Disambiguation:
+- scratch = a surface mark/scrape with no deformation; dent = a localized \
+deformation; crack = fracture lines (use crack even for a screen that looks \
+"shattered" unless the glass is clearly broken into separate pieces, which is \
+glass_shatter).
+- broken_part = a component detached, dislodged, or no longer seated correctly \
+(e.g. a side mirror hanging off) — prefer this over crack for non-glass components.
+- stain = a surface discoloration or liquid mark, including a spill on a keyboard; \
+water_damage = water exposure to packaging/box surfaces specifically.
+- For packaging: crushed_packaging = a crushed/caved-in box; torn_packaging = a \
+torn flap/seal/opening.
 
-severity: "none" when there is no damage, "unknown" when not_enough_information, \
-otherwise low / medium / high based on the visible extent of damage.
+severity rubric (calibrate carefully — do not over-rate):
+- "none": no damage present (e.g. the claim is contradicted because the part is \
+undamaged).
+- "low": minor/cosmetic — a light scratch or scuff, or small/edge damage.
+- "medium": a clearly visible single-area issue — a dent, a crack, a stain, a torn \
+seal, a crushed corner, or one broken/dislodged component.
+- "high": severe or structural — shattered glass, a part broken clean off or \
+missing, major deformation, or severe damage across multiple areas.
+- "unknown": only when claim_status is not_enough_information.
+IMPORTANT: a single visible dent, crack, scratch, stain, torn seal, crushed \
+corner, or one broken/dislodged component is at most "medium" — do NOT rate it \
+"high". Reserve "high" strictly for shattered, broken-off, or major/structural \
+multi-area damage.
+
+Avoid over-suspicion: if the image plainly shows the claimed object, do not assign \
+wrong_object or contradict the claim unless the visible evidence clearly justifies \
+it.
 
 VISUAL RISK FLAGS (assign only what the images justify; leave empty for none):
 - blurry_image, low_light_or_glare, wrong_angle, cropped_or_obstructed: image \
-quality / framing problems.
+quality / framing problems. Only assign these when the problem actually impairs \
+the review — if the claimed damage is still clearly visible, do NOT add a quality \
+flag.
 - damage_not_visible: the claimed part is shown but the claimed damage is not \
 present or not visible.
 - wrong_object / wrong_object_part: the image shows a different object or a \
