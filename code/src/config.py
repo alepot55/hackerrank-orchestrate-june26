@@ -40,7 +40,7 @@ MAX_TOKENS = int(os.environ.get("ORCHESTRATE_MAX_TOKENS", "1200"))
 # Downscale images so the long edge is at most this many pixels before sending.
 # Smaller -> fewer image tokens -> cheaper. 1456 keeps damage detail readable
 # while staying well under the high-resolution token blow-up.
-IMAGE_MAX_EDGE = int(os.environ.get("ORCHESTRATE_IMAGE_MAX_EDGE", "1456"))
+IMAGE_MAX_EDGE = int(os.environ.get("ORCHESTRATE_IMAGE_MAX_EDGE", "1568"))
 IMAGE_JPEG_QUALITY = int(os.environ.get("ORCHESTRATE_IMAGE_QUALITY", "80"))
 
 # Use the asynchronous Batch API for the (latency-insensitive) test run: 50% off.

@@ -5,16 +5,16 @@
 ```
 Field                       Accuracy / F1
 --------------------------------------------
-evidence_standard_met       85.0%  (17/20)
-valid_image                 85.0%  (17/20)
+evidence_standard_met       95.0%  (19/20)
+valid_image                 90.0%  (18/20)
 issue_type                  65.0%  (13/20)
-object_part                 90.0%  (18/20)
+object_part                 95.0%  (19/20)
 claim_status                80.0%  (16/20)
-severity                    45.0%  (9/20)
-risk_flags                  65.0%  (exact 13/20, F1 0.75)
-supporting_image_ids        75.0%  (exact 15/20, F1 0.81)
+severity                    55.0%  (11/20)
+risk_flags                  50.0%  (exact 10/20, F1 0.76)
+supporting_image_ids        90.0%  (exact 18/20, F1 0.95)
 --------------------------------------------
-OVERALL (mean)              73.8%
+OVERALL (mean)              77.5%
 ```
 
 `claim_status` is the headline decision field. `risk_flags` and
@@ -42,12 +42,12 @@ Measured on the sample run; the test set has 44 claims.
 | Billed model calls | 20 | ~44 (1 per claim; fewer with cache) |
 | Local cache hits (free) | 0 | grows on re-runs |
 | Images processed | 29 | ~63 |
-| Input tokens | 30,174 | ~66,382 |
-| Output tokens | 10,251 | ~22,552 |
-| Prompt-cache write tokens | 3,647 | ~one shared prefix |
-| Prompt-cache read tokens | 69,293 | accrues across calls |
-| Estimated cost (USD) | $0.4783 | ~$0.5261 (Batch API, 50% off) |
-| Wall-clock runtime | 147.4s | minutes (async batch) |
+| Input tokens | 31,553 | ~69,416 |
+| Output tokens | 10,770 | ~23,694 |
+| Prompt-cache write tokens | 4,872 | ~one shared prefix |
+| Prompt-cache read tokens | 92,568 | accrues across calls |
+| Estimated cost (USD) | $0.5220 | ~$0.5742 (Batch API, 50% off) |
+| Wall-clock runtime | 150.0s | minutes (async batch) |
 
 ### Pricing assumptions
 - claude-opus-4-8: $5.0/1M input, $25.0/1M output.
@@ -61,7 +61,7 @@ Measured on the sample run; the test set has 44 claims.
 - **Batch API for the test run:** the 44-claim run is latency-insensitive,
   so it goes through the asynchronous Batch API for a flat 50% discount and to
   stay comfortably under per-minute request/token limits (RPM/TPM).
-- **Image downscaling:** images are downscaled to a 1456px long
+- **Image downscaling:** images are downscaled to a 1568px long
   edge and re-encoded as JPEG before upload — the largest single lever on image
   token cost — while keeping surface damage readable.
 - **On-disk response cache:** every request is hashed and its result cached, so

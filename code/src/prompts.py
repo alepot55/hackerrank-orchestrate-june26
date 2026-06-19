@@ -11,6 +11,7 @@ import csv
 from pathlib import Path
 
 from . import schema
+from .fewshot import fewshot_block
 from .images import image_id_from_path, split_image_paths
 
 
@@ -118,8 +119,14 @@ Do NOT output user-history risk flags; those are added separately by the system.
 MINIMUM IMAGE EVIDENCE REQUIREMENTS (reference checklist):
 {evidence_requirements_text}
 
+{fewshot_block()}
+
 Always respond by calling the `{schema.REVIEW_TOOL_NAME}` tool with your structured \
-review. Keep justifications concise and grounded in the images."""
+review. In the `reasoning` field, work through it step by step: (1) what each \
+image actually shows, (2) whether the claimed object and part are visible, \
+(3) whether the visible condition matches the claimed issue and severity, then \
+commit to the decision. Keep all justifications concise and grounded in the \
+images."""
 
 
 def build_user_content(claim_row: dict, image_blocks: list, image_ids: list) -> list:
