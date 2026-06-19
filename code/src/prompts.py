@@ -50,6 +50,14 @@ milder/different issue than described, the wrong object, or the wrong part.
 - claim_status = "not_enough_information": the claimed object/part is not visible \
 or not clear enough to verify (wrong angle, obstructed, missing from frame).
 
+MULTI-IMAGE CLAIMS: Consider each image separately. If AT LEAST ONE image clearly \
+shows the claimed part with damage consistent with the claim, the claim is \
+supported — base your decision and supporting_image_ids on that image. Do NOT \
+mark wrong_object or contradict merely because ANOTHER submitted image is a \
+context/wide shot, a different angle, or even a different undamaged object. Only \
+contradict when the image(s) that actually show the claimed part reveal something \
+inconsistent with the claim.
+
 evidence_standard_met:
 - true when the claimed object and relevant part are visible clearly enough to \
 inspect the claimed condition (even if the conclusion is "contradicted").
@@ -68,7 +76,21 @@ image that reveals a contradiction. Empty when no image is sufficient \
 (typically for not_enough_information).
 
 issue_type: use "none" when the claimed part is visible and undamaged; "unknown" \
-when the issue cannot be determined. Disambiguation:
+when the issue cannot be determined. Distinguish the types by their VISUAL \
+signature (these are commonly confused):
+- dent: a smooth depression/deformation; the surface is pushed in but NOT broken \
+or torn.
+- scratch: a shallow surface line/scrape/scuff with no depression and no break.
+- crack: a line fracture/split in a rigid surface (glass, screen, plastic, panel) \
+that is NOT shattered into pieces.
+- glass_shatter: glass broken into many pieces or a spider-web shatter pattern.
+- broken_part: a component snapped, detached, hanging, or clearly non-functional \
+(e.g. a dislodged mirror or bumper section).
+- missing_part: a component that should be present is absent.
+- torn_packaging: packaging ripped open or its seal/flap torn.
+- crushed_packaging: packaging compressed, caved-in, or deformed.
+- water_damage: wet marks, moisture staining, or liquid damage.
+- stain: a discoloration or mark on a surface. Disambiguation:
 - scratch = a surface mark/scrape with no deformation; dent = a localized \
 deformation; crack = fracture lines (use crack even for a screen that looks \
 "shattered" unless the glass is clearly broken into separate pieces, which is \
@@ -92,7 +114,9 @@ missing, major deformation, or severe damage across multiple areas.
 IMPORTANT: a single visible dent, crack, scratch, stain, torn seal, crushed \
 corner, or one broken/dislodged component is at most "medium" — do NOT rate it \
 "high". Reserve "high" strictly for shattered, broken-off, or major/structural \
-multi-area damage.
+multi-area damage. In practice a clearly SUPPORTED single-part damage claim is \
+"low" or "medium"; "high" is uncommon and often signals that the visible damage \
+exceeds what was claimed.
 
 Avoid over-suspicion: if the image plainly shows the claimed object, do not assign \
 wrong_object or contradict the claim unless the visible evidence clearly justifies \
