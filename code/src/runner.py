@@ -109,7 +109,18 @@ class ModelRunner:
 
     # -- disk cache ---------------------------------------------------------
     def _cache_path(self, params: dict) -> Path:
-        key = json.dumps(params, sort_keys=True).encode("utf-8")
+        # Key on the *semantic* request only — strip cache_control (a billing knob
+        # that does not change the model's answer) so toggling caching/TTL does
+        # not invalidate the on-disk result cache.
+        norm = {
+            "model": params["model"],
+            "max_tokens": params["max_tokens"],
+            "tools": params["tools"],
+            "tool_choice": params["tool_choice"],
+            "messages": params["messages"],
+            "system": [b.get("text") for b in params["system"]],
+        }
+        key = json.dumps(norm, sort_keys=True).encode("utf-8")
         digest = hashlib.sha256(key).hexdigest()[:32]
         return config.CACHE_DIR / f"{digest}.json"
 
@@ -158,8 +169,37 @@ class ModelRunner:
             self.usage.add(resp.usage)
             self.usage.api_calls += 1
             out = self._extract_tool_input(resp.content) or {}
+            if config.ESCALATE and out.get("confidence") == "low":
+                out = self._grounded_repass(params, out)
             results[idx] = out
             self._store(cpath, out)
+
+    def _grounded_repass(self, params: dict, first: dict) -> dict:
+        """Second, grounded re-examination for a low-confidence claim. We append a
+        focused-inspection nudge (not a naive 'are you sure?') and re-decide;
+        intrinsic self-doubt is avoided per the self-correction literature."""
+        nudge = {
+            "role": "user",
+            "content": (
+                "Re-examine ONLY the claimed object part. Look closely at the "
+                "relevant region of each image and decide strictly from what is "
+                "actually visible there. If the claimed damage is not clearly "
+                "visible, do not assume it exists. Re-issue your structured review."
+            ),
+        }
+        repass = dict(params)
+        repass["messages"] = params["messages"] + [
+            {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "prior", "name": schema.REVIEW_TOOL_NAME,
+                 "input": first}]},
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "prior", "content": "noted"}]},
+            nudge,
+        ]
+        resp = self.client.messages.create(**repass)
+        self.usage.add(resp.usage)
+        self.usage.api_calls += 1
+        return self._extract_tool_input(resp.content) or first
 
     def _run_batch(self, pending, results) -> None:
         from anthropic.types.message_create_params import MessageCreateParamsNonStreaming

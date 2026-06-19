@@ -178,12 +178,21 @@ REVIEW_TOOL = {
                     "not_enough_information, otherwise low/medium/high."
                 ),
             },
+            "confidence": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": (
+                    "Your confidence in this overall decision given image quality "
+                    "and clarity. Use 'low' when the images are ambiguous, the part "
+                    "is hard to see, or the call is borderline."
+                ),
+            },
         },
         "required": [
             "reasoning", "evidence_standard_met", "evidence_standard_met_reason",
             "visual_risk_flags", "issue_type", "object_part", "claim_status",
             "claim_status_justification", "supporting_image_ids", "valid_image",
-            "severity",
+            "severity", "confidence",
         ],
     },
 }

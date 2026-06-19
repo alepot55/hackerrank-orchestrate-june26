@@ -49,6 +49,12 @@ USE_BATCH = os.environ.get("ORCHESTRATE_USE_BATCH", "1") not in ("0", "false", "
 # Prompt-cache TTL. "1h" is right for batch runs that span more than 5 minutes.
 CACHE_TTL = os.environ.get("ORCHESTRATE_CACHE_TTL", "1h")
 
+# Cost-gated escalation (sync path): re-examine only claims the model itself
+# marked low-confidence, with a grounded "look more carefully" re-pass. OFF by
+# default — it adds a call only for the low-confidence minority. Grounded
+# re-examination (not naive "are you sure?") is the form research finds safe.
+ESCALATE = os.environ.get("ORCHESTRATE_ESCALATE", "0") not in ("0", "false", "False")
+
 
 # ---------------------------------------------------------------------------
 # Pricing (USD per 1M tokens) — used only for the operational cost report.
