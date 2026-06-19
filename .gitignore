@@ -23,3 +23,5 @@ code/.cache/
 # Build artifact (submission bundle)
 code.zip
 *.zip
+chat_transcript.html
+chat_transcript.pdf
