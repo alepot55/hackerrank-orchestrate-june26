@@ -119,6 +119,16 @@ QWK {so['qwk']:.2f}** — i.e. almost every "error" is a single adjacent level.
 ### Ablation — contribution of the deterministic history layer
 {_history_ablation(pred_rows, gold_rows, claim_rows)}
 
+### Experiment we measured and rejected — self-consistency ensembling
+We implemented self-consistency (sample each claim N=3 times, majority-vote per
+field; `ORCHESTRATE_SAMPLES`, kept off by default). On this dev set it did **not**
+improve accuracy (≈74% vs ≈76% single-call) while tripling cost. The reason is
+diagnostic: the model's residual errors here are **systematic, not random**
+(e.g. it consistently reads the same ambiguous image the same way), so three
+correlated samples reproduce the same mistake instead of out-voting it.
+Self-consistency pays off when errors are independent; here they are not — so we
+ship the single-call path and keep the ensemble as an opt-in.
+
 ## Error analysis ({len(errors)}/{n_sample} rows with at least one field error)
 {chr(10).join(errors) if errors else '- none'}
 

@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 
 import anthropic
 
-from . import config, prompts, schema
+from . import config, ensemble, prompts, schema
 from .images import encode_image
 
 
@@ -80,7 +80,7 @@ class ModelRunner:
         config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     # -- request building ---------------------------------------------------
-    def build_params(self, claim_row: dict) -> Tuple[dict, List[str]]:
+    def build_params(self, claim_row: dict, sample_idx: int = 0) -> Tuple[dict, List[str]]:
         image_ids = prompts.image_ids_for_claim(claim_row["image_paths"])
         from .images import split_image_paths
         blocks, present_ids = [], []
@@ -90,6 +90,13 @@ class ModelRunner:
                 blocks.append(b)
                 present_ids.append(img_id)
         user_content = prompts.build_user_content(claim_row, blocks, present_ids)
+        # For self-consistency we need N distinct samples (and distinct cache keys).
+        # A neutral marker on the header makes each sample independent without
+        # biasing the visual judgement.
+        if sample_idx > 0 and user_content and user_content[0].get("type") == "text":
+            first = dict(user_content[0])
+            first["text"] = first["text"] + f"\n\n(Independent assessment #{sample_idx + 1}.)"
+            user_content = [first] + user_content[1:]
         # Prompt caching only helps the SYNC path, where calls are sequential and
         # later claims read the cached prefix. In BATCH mode the 44 requests run
         # concurrently, so none can read another's cache — they would only pay the
@@ -136,43 +143,57 @@ class ModelRunner:
 
     # -- execution ----------------------------------------------------------
     def run(self, claim_rows: List[dict]) -> Dict[int, dict]:
-        """Return {row_index: model_output_dict} for every claim."""
-        prepared = []  # (idx, params, image_ids, cache_path)
-        for idx, row in enumerate(claim_rows):
-            params, image_ids = self.build_params(row)
-            self.usage.images += len(image_ids)
-            prepared.append((idx, params, image_ids, self._cache_path(params)))
+        """Return {row_index: model_output_dict} for every claim.
 
-        results: Dict[int, dict] = {}
-        pending = []  # (idx, params, cache_path)
-        for idx, params, image_ids, cpath in prepared:
+        With config.SAMPLES > 1 each claim is sampled N times and the per-field
+        majority vote is returned (self-consistency).
+        """
+        samples = max(1, config.SAMPLES)
+        # Build one request per (claim, sample). Key requests by (idx, sample).
+        prepared = []  # (key, params, cache_path)
+        for idx, row in enumerate(claim_rows):
+            for s in range(samples):
+                params, image_ids = self.build_params(row, s)
+                if s == 0:
+                    self.usage.images += len(image_ids)
+                prepared.append(((idx, s), params, self._cache_path(params)))
+
+        raw: Dict[tuple, dict] = {}
+        pending = []  # (key, params, cache_path)
+        for key, params, cpath in prepared:
             if cpath.exists():
-                cached = json.loads(cpath.read_text())
-                results[idx] = cached["output"]
+                raw[key] = json.loads(cpath.read_text())["output"]
                 self.usage.cache_hits += 1
             else:
-                pending.append((idx, params, cpath))
+                pending.append((key, params, cpath))
 
         if pending:
             if self.use_batch:
-                self._run_batch(pending, results)
+                self._run_batch(pending, raw)
             else:
-                self._run_sync(pending, results)
+                self._run_sync(pending, raw)
+
+        # Collapse the N samples per claim into one output via majority vote.
+        results: Dict[int, dict] = {}
+        for idx in range(len(claim_rows)):
+            outs = [raw.get((idx, s), {}) for s in range(samples)]
+            results[idx] = ensemble.vote(outs) if samples > 1 else outs[0]
         return results
 
     def _store(self, cpath: Path, output: dict) -> None:
         cpath.write_text(json.dumps({"output": output}, ensure_ascii=False))
 
-    def _run_sync(self, pending, results) -> None:
-        for idx, params, cpath in pending:
+    def _run_sync(self, pending, raw) -> None:
+        for key, params, cpath in pending:
             resp = self.client.messages.create(**params)
             self.usage.add(resp.usage)
             self.usage.api_calls += 1
             out = self._extract_tool_input(resp.content) or {}
             if config.ESCALATE and out.get("confidence") == "low":
                 out = self._grounded_repass(params, out)
-            results[idx] = out
-            self._store(cpath, out)
+            raw[key] = out
+            if out:  # never cache an empty/failed result — let it retry next run
+                self._store(cpath, out)
 
     def _grounded_repass(self, params: dict, first: dict) -> dict:
         """Second, grounded re-examination for a low-confidence claim. We append a
@@ -201,14 +222,17 @@ class ModelRunner:
         self.usage.api_calls += 1
         return self._extract_tool_input(resp.content) or first
 
-    def _run_batch(self, pending, results) -> None:
+    def _run_batch(self, pending, raw) -> None:
         from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
         from anthropic.types.messages.batch_create_params import Request
 
-        index_by_cid = {f"claim-{idx}": (idx, cpath) for idx, _, cpath in pending}
+        def cid(key):  # (idx, sample) -> valid custom_id ^[a-zA-Z0-9_-]{1,64}$
+            return f"c{key[0]}-s{key[1]}"
+
+        by_cid = {cid(key): (key, cpath) for key, _, cpath in pending}
         requests = [
-            Request(custom_id=f"claim-{idx}", params=MessageCreateParamsNonStreaming(**params))
-            for idx, params, _ in pending
+            Request(custom_id=cid(key), params=MessageCreateParamsNonStreaming(**params))
+            for key, params, _ in pending
         ]
         batch = self.client.messages.batches.create(requests=requests)
         print(f"  Batch {batch.id} submitted ({len(requests)} requests). Polling...")
@@ -218,13 +242,16 @@ class ModelRunner:
                 break
             time.sleep(15)
         for r in self.client.messages.batches.results(batch.id):
-            idx, cpath = index_by_cid[r.custom_id]
+            key, cpath = by_cid[r.custom_id]
             if r.result.type == "succeeded":
                 msg = r.result.message
                 self.usage.add(msg.usage)
                 self.usage.api_calls += 1
                 out = self._extract_tool_input(msg.content) or {}
+                raw[key] = out
+                if out:  # only cache successful, non-empty results
+                    self._store(cpath, out)
             else:
-                out = {}  # errored/expired -> empty; post-processing fills safe defaults
-            results[idx] = out
-            self._store(cpath, out)
+                # errored/expired -> empty; post-processing fills safe defaults.
+                # Do NOT cache it, so a re-run retries the failed request.
+                raw[key] = {}

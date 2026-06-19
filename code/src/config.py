@@ -46,6 +46,10 @@ IMAGE_JPEG_QUALITY = int(os.environ.get("ORCHESTRATE_IMAGE_QUALITY", "80"))
 # Use the asynchronous Batch API for the (latency-insensitive) test run: 50% off.
 USE_BATCH = os.environ.get("ORCHESTRATE_USE_BATCH", "1") not in ("0", "false", "False")
 
+# Self-consistency: sample each claim this many times and majority-vote per field.
+# 1 = off (single call). 3 is a good cost/variance-reduction balance.
+SAMPLES = int(os.environ.get("ORCHESTRATE_SAMPLES", "1"))
+
 # Prompt-cache TTL. "1h" is right for batch runs that span more than 5 minutes.
 CACHE_TTL = os.environ.get("ORCHESTRATE_CACHE_TTL", "1h")
 

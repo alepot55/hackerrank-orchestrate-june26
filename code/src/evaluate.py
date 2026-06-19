@@ -71,7 +71,7 @@ def ordinal_metrics(pred_rows, gold_rows, field="severity") -> dict:
             pv.append(po)
             gv.append(go)
     return {
-        "exact": exact / n,
+        "exact": exact / n if n else 0.0,
         "adjacent_within_1": _adjacent_rate(p, g),
         "mae": abs_err / comparable if comparable else 0.0,
         "qwk": _qwk(pv, gv),
@@ -161,7 +161,7 @@ def multilabel(pred_rows, gold_rows, field) -> dict:
     recall = tp / (tp + fn) if (tp + fn) else 1.0
     micro_f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
     return {
-        "exact_set_accuracy": exact / n, "exact": exact, "total": n,
+        "exact_set_accuracy": exact / n if n else 0.0, "exact": exact, "total": n,
         "precision": precision, "recall": recall, "micro_f1": micro_f1,
         "hamming_per_claim": hamming / n if n else 0.0,
     }
@@ -178,8 +178,8 @@ def score(pred_rows: List[dict], gold_rows: List[dict]) -> Dict[str, dict]:
         correct = sum(1 for p, g in zip(pred_rows, gold_rows)
                       if (p.get(field, "") or "").strip() == (g.get(field, "") or "").strip())
         lo, hi = wilson_ci(correct, n)
-        metrics[field] = {"accuracy": correct / n, "correct": correct, "total": n,
-                          "ci95": (lo, hi)}
+        metrics[field] = {"accuracy": correct / n if n else 0.0, "correct": correct,
+                          "total": n, "ci95": (lo, hi)}
     for field in SET_FIELDS:
         metrics[field] = multilabel(pred_rows, gold_rows, field)
     metrics["severity_ordinal"] = ordinal_metrics(pred_rows, gold_rows, "severity")
