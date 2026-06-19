@@ -19,3 +19,7 @@ code/.cache/
 
 # OS
 .DS_Store
+
+# Build artifact (submission bundle)
+code.zip
+*.zip
