@@ -55,9 +55,10 @@ Measured on the sample run; the test set has 44 claims.
 - Batch API: 50% discount on input and output.
 
 ### Cost, latency & rate-limit strategy
-- **Prompt caching:** the large static system prompt + tool schema are marked
-  `cache_control` (1h TTL) so every claim after the first reads
-  the shared prefix at ~10% cost instead of re-paying for it.
+- **Prompt caching (sync path):** the static system prompt + tool schema are
+  marked `cache_control` so each sequential claim reads the shared prefix at ~10%
+  cost. Caching is applied only in sync mode; in batch mode the concurrent
+  requests cannot share a cache, so it is disabled to avoid the write premium.
 - **Batch API for the test run:** the 44-claim run is latency-insensitive,
   so it goes through the asynchronous Batch API for a flat 50% discount and to
   stay comfortably under per-minute request/token limits (RPM/TPM).

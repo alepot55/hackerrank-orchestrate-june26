@@ -28,9 +28,10 @@ evidence) — as required by the task.
 
 ## Cost & efficiency (built in)
 
-- **Prompt caching** — the large static system prompt + tool schema are marked
-  `cache_control` (1h TTL), so every claim after the first reads the shared
-  prefix at ~10% cost.
+- **Prompt caching (sync path)** — the static system prompt + tool schema are
+  marked `cache_control` so each sequential claim reads the shared prefix at ~10%
+  cost. Disabled in batch mode, where concurrent requests cannot share a cache
+  and would only pay the write premium.
 - **Batch API** — the test run (`main.py`) uses the asynchronous Batch API by
   default: a flat 50% discount and comfortable headroom under RPM/TPM limits.
 - **Image downscaling** — images are resized to a 1456px long edge and

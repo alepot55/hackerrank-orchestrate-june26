@@ -90,14 +90,17 @@ class ModelRunner:
                 blocks.append(b)
                 present_ids.append(img_id)
         user_content = prompts.build_user_content(claim_row, blocks, present_ids)
+        # Prompt caching only helps the SYNC path, where calls are sequential and
+        # later claims read the cached prefix. In BATCH mode the 44 requests run
+        # concurrently, so none can read another's cache — they would only pay the
+        # cache-write premium. So we cache for sync and skip it for batch.
+        system_block = {"type": "text", "text": self._system}
+        if not self.use_batch:
+            system_block["cache_control"] = {"type": "ephemeral"}  # 5-min TTL
         params = {
             "model": config.MODEL,
             "max_tokens": config.MAX_TOKENS,
-            "system": [{
-                "type": "text",
-                "text": self._system,
-                "cache_control": {"type": "ephemeral", "ttl": config.CACHE_TTL},
-            }],
+            "system": [system_block],
             "tools": [schema.REVIEW_TOOL],
             "tool_choice": {"type": "tool", "name": schema.REVIEW_TOOL_NAME},
             "messages": [{"role": "user", "content": user_content}],
